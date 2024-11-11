@@ -9,7 +9,7 @@ import imaplib
 import email
 import email.parser
 import email.header
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup 
 import pickle
 import uuid
 import shutil
@@ -153,28 +153,35 @@ def loadNewMail():
         mimeSubject = message.get("Subject")
         decodedSubject = email.header.decode_header(mimeSubject)
         mail["subject"] = str(email.header.make_header(decodedSubject))
-        
+
         mail["minicontent"] = ""
         mail["content"] = ""
 
         for part in message.walk():
             if part.get_content_type() == "text/plain":
-                mail["minicontent"] += part.get_payload(decode=True).decode()
+                payload = part.get_payload(decode=True)
+                try:
+                    # Try UTF-8 decoding first
+                    mail["minicontent"] += payload.decode('utf-8')
+                except UnicodeDecodeError:
+                    # Fallback to latin-1 decoding if UTF-8 fails
+                    mail["minicontent"] += payload.decode('latin-1')
             elif part.get_content_type() == "text/html":
-                if not pathlib.Path('./web/userData').exists(): pathlib.Path('./web/userData').mkdir(parents=True)
+                if not pathlib.Path('./web/userData').exists():
+                    pathlib.Path('./web/userData').mkdir(parents=True)
                 with open(f'./web/userData/{msg.decode()}-mail.html', 'w', encoding='utf-8') as file:
-                    file.write(part.get_payload(decode=True).decode())
+                    file.write(part.get_payload(decode=True).decode('utf-8', errors='ignore'))
                 mail["content"] = f'./userData/{msg.decode()}-mail.html'
-                
-        
+
         if mail['content'] == '':
             mail['textOnly'] = True
-        
+
         mails.append(mail)
-    
+
     imap.unselect()
 
     return mails
+
 
 """
 ============================
